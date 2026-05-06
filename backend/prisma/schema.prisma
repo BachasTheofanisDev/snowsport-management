@@ -50,6 +50,7 @@ model Instructor {
   schoolId  String
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   lessons   Lesson[]
+  reviews   Review[]
 }
 
 // Μάθημα
@@ -87,6 +88,7 @@ model Customer {
   updatedAt DateTime @updatedAt
 
   bookings  Booking[]
+  review    Review[]
 }
 
 // Κράτηση
@@ -102,4 +104,20 @@ model Booking {
   lesson        Lesson    @relation(fields: [lessonId], references: [id])
   customerId    String?
   customer      Customer? @relation(fields: [customerId], references: [id])
+
+  review    Review?
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  rating     Int      // 1-5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  bookingId    String   @unique
+  booking      Booking  @relation(fields: [bookingId], references: [id])
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  instructorId String
+  instructor   Instructor @relation(fields: [instructorId], references: [id])
 }

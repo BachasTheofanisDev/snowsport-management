@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { getMyBookings, cancelCustomerBooking } from '../api'
+import { getMyBookings, cancelCustomerBooking, createReview } from '../api'
 import NewBookingForm from '../components/NewBookingForm'
 
 function CustomerDashboard() {
@@ -9,6 +9,9 @@ function CustomerDashboard() {
     const navigate = useNavigate()
     const [bookings, setBookings] = useState([])
     const [activeTab, setActiveTab] = useState('bookings')
+    const [reviewModal, setReviewModal] = useState(null) // booking που αξιολογείται
+    const [rating, setRating] = useState(5)
+    const [comment, setComment] = useState('')
 
     useEffect(() => { fetchBookings() }, [])
 
@@ -24,6 +27,19 @@ function CustomerDashboard() {
         try {
             await cancelCustomerBooking(id)
             fetchBookings()
+        } catch (err) {
+            alert(err.response?.data?.error || 'Κάτι πήγε στραβά')
+        }
+    }
+
+    const handleReview = async () => {
+        try {
+            await createReview({ bookingId: reviewModal.id, rating, comment })
+            setReviewModal(null)
+            setRating(5)
+            setComment('')
+            fetchBookings()
+            alert('Η αξιολόγησή σου καταχωρήθηκε! ⭐')
         } catch (err) {
             alert(err.response?.data?.error || 'Κάτι πήγε στραβά')
         }
@@ -100,13 +116,25 @@ function CustomerDashboard() {
                                                 <span className={`badge badge-${b.status}`}>
                                                     {b.status === 'confirmed' ? 'Επιβεβαιωμένο' : b.status === 'pending' ? 'Εκκρεμεί' : 'Ακυρωμένο'}
                                                 </span>
+                                                {b.review && (
+                                                    <span style={{ marginLeft: 8, fontSize: 12, color: '#f59e0b' }}>
+                                                        {'★'.repeat(b.review.rating)} Αξιολογήθηκε
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
-                                        {b.status !== 'cancelled' && (
-                                            <button className="btn btn-danger btn-sm" onClick={() => handleCancel(b.id)}>
-                                                Ακύρωση
-                                            </button>
-                                        )}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {b.status !== 'cancelled' && (
+                                                <button className="btn btn-danger btn-sm" onClick={() => handleCancel(b.id)}>
+                                                    Ακύρωση
+                                                </button>
+                                            )}
+                                            {b.status === 'confirmed' && new Date(b.lesson?.date) < new Date() && !b.review && (
+                                                <button className="btn btn-success btn-sm" onClick={() => setReviewModal(b)}>
+                                                    ⭐ Αξιολόγηση
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             )}
@@ -121,6 +149,47 @@ function CustomerDashboard() {
                     }} />
                 )}
             </div>
+
+            {reviewModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="card" style={{ width: '100%', maxWidth: 480, margin: '1rem' }}>
+                        <div className="card-header" style={{ background: 'var(--navy)', color: 'white' }}>
+                            <span className="card-title" style={{ color: 'white' }}>⭐ Αξιολόγηση Μαθήματος</span>
+                            <button onClick={() => setReviewModal(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                        </div>
+                        <div className="card-body">
+                            <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: 13 }}>
+                                {reviewModal.lesson?.sport === 'ski' ? '⛷️' : '🏂'} {reviewModal.lesson?.startTime} — {new Date(reviewModal.lesson?.date).toLocaleDateString('el-GR')}
+                            </p>
+
+                            <div className="form-group">
+                                <label className="form-label">Βαθμολογία</label>
+                                <div style={{ display: 'flex', gap: '0.5rem', fontSize: 32, marginTop: 8 }}>
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <span key={star} onClick={() => setRating(star)}
+                                            style={{ cursor: 'pointer', color: star <= rating ? '#f59e0b' : '#e2e8f0' }}>
+                                            ★
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-group" style={{ marginTop: '1rem' }}>
+                                <label className="form-label">Σχόλιο (προαιρετικό)</label>
+                                <textarea className="form-input" rows={3}
+                                    value={comment}
+                                    onChange={e => setComment(e.target.value)}
+                                    placeholder="Πώς ήταν το μάθημα;" />
+                            </div>
+
+                            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}
+                                onClick={handleReview}>
+                                Υποβολή Αξιολόγησης
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     )
 }

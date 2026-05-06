@@ -49,3 +49,11 @@ export const createOpenGroupLesson = (data) => API.post('/lessons/open-group', d
 
 export const getOpenGroups = (schoolId) => API.get(`/customer/open-groups?schoolId=${schoolId}`)
 export const joinOpenGroup = (lessonId) => API.post('/customer/bookings', { lessonId, isOpenGroup: true })
+
+export const createReview = (data) => API.post('/reviews', data)
+export const getInstructorReviews = (instructorId) => API.get(`/reviews/instructor/${instructorId}`)
+
+export const getMyReviews = () => API.get('/instructor/reviews')
+
+export const getSchoolProfile = (id) => API.get(`/customer/schools/${id}`)
+export const getInstructorProfile = (id) => API.get(`/customer/instructor/${id}`)

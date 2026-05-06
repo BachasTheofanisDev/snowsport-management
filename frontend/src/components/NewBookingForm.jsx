@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAvailableSlots, bookLesson, getOpenGroups, joinOpenGroup } from '../api'
+import { getAvailableSlots, bookLesson, getOpenGroups, joinOpenGroup, getSchoolProfile, getInstructorProfile } from '../api'
 import axios from 'axios'
 
 function NewBookingForm({ onBookingComplete }) {
@@ -17,6 +17,8 @@ function NewBookingForm({ onBookingComplete }) {
     const [persons, setPersons] = useState(1)
     const [bookingType, setBookingType] = useState('individual') // 'individual' | 'open_group'
     const [openGroups, setOpenGroups] = useState([])
+    const [schoolProfile, setSchoolProfile] = useState(null)
+    const [instructorProfile, setInstructorProfile] = useState(null)
 
     useEffect(() => {
         // Φόρτωσε τις σχολές
@@ -40,6 +42,26 @@ function NewBookingForm({ onBookingComplete }) {
                 .catch(err => console.error(err))
         }
     }, [selectedSchool, bookingType])
+
+    useEffect(() => {
+        if (selectedSchool) {
+            getSchoolProfile(selectedSchool)
+                .then(res => setSchoolProfile(res.data))
+                .catch(err => console.error(err))
+        } else {
+            setSchoolProfile(null)
+        }
+    }, [selectedSchool])
+
+    useEffect(() => {
+        if (selectedInstructor) {
+            getInstructorProfile(selectedInstructor)
+                .then(res => setInstructorProfile(res.data))
+                .catch(err => console.error(err))
+        } else {
+            setInstructorProfile(null)
+        }
+    }, [selectedInstructor])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -108,7 +130,7 @@ function NewBookingForm({ onBookingComplete }) {
                 <div className="form-group">
                     <label className="form-label">Σχολή</label>
                     <select className="form-select" value={selectedSchool}
-                        onChange={e => { setSelectedSchool(e.target.value); setSlots([]); setSelectedInstructor(''); setOpenGroups([]) }}
+                        onChange={e => { setSelectedSchool(e.target.value); setSlots([]); setSelectedInstructor(''); setOpenGroups([]); setSchoolProfile(null); setInstructorProfile(null) }}
                         required>
                         <option value="">Επέλεξε σχολή</option>
                         {schools.map(s => (
@@ -117,6 +139,23 @@ function NewBookingForm({ onBookingComplete }) {
                     </select>
                 </div>
 
+                {/* Προφίλ Σχολής */}
+                {schoolProfile && (
+                    <div style={{ background: 'var(--ice)', border: '0.5px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>🏫 {schoolProfile.name}</div>
+                        {schoolProfile.phone && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>📞 {schoolProfile.phone}</div>}
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>👨‍🏫 Εκπαιδευτές:</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {schoolProfile.instructors.map(i => (
+                                <div key={i.id} style={{ background: 'white', border: '0.5px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', fontSize: 12 }}>
+                                    {i.name}
+                                    {i.avgRating > 0 && <span style={{ color: '#f59e0b', marginLeft: 4 }}>★ {i.avgRating}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Ατομικό */}
                 {bookingType === 'individual' && (
                     <form onSubmit={handleSubmit}>
@@ -124,7 +163,7 @@ function NewBookingForm({ onBookingComplete }) {
                             <div className="form-group">
                                 <label className="form-label">Ημερομηνία</label>
                                 <input className="form-input" type="date" value={date}
-                                    onChange={e => { setDate(e.target.value); setSlots([]); setSelectedInstructor('') }}
+                                    onChange={e => { setDate(e.target.value); setSlots([]); setSelectedInstructor(''); setInstructorProfile(null) }}
                                     min={new Date().toISOString().split('T')[0]} required />
                             </div>
 
@@ -160,7 +199,7 @@ function NewBookingForm({ onBookingComplete }) {
                                 <div className="form-group">
                                     <label className="form-label">Εκπαιδευτής (προαιρετικό)</label>
                                     <select className="form-select" value={selectedInstructor}
-                                        onChange={e => { setSelectedInstructor(e.target.value); setStartTime('') }}>
+                                        onChange={e => { setSelectedInstructor(e.target.value); setStartTime(''); setInstructorProfile(null) }}>
                                         <option value="">-- Χωρίς προτίμηση --</option>
                                         {slots.map(s => (
                                             <option key={s.id} value={s.id}>
@@ -191,6 +230,33 @@ function NewBookingForm({ onBookingComplete }) {
                                             </select>
                                         </div>
                                     </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Προφίλ Εκπαιδευτή */}
+                        {instructorProfile && (
+                            <div style={{ background: 'var(--ice)', border: '0.5px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <div style={{ fontWeight: 600, fontSize: 14 }}>👨‍🏫 {instructorProfile.name}</div>
+                                    {instructorProfile.avgRating > 0 && (
+                                        <span style={{ color: '#f59e0b', fontWeight: 600 }}>★ {instructorProfile.avgRating} ({instructorProfile.totalReviews} αξιολογήσεις)</span>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                    🎿 {instructorProfile.specialty.map(s => s === 'ski' ? 'Σκι' : 'Snowboard').join(', ')}
+                                </div>
+                                {instructorProfile.reviews.length > 0 && (
+                                    <div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Τελευταίες αξιολογήσεις:</div>
+                                        {instructorProfile.reviews.slice(0, 3).map(r => (
+                                            <div key={r.id} style={{ fontSize: 12, padding: '4px 0', borderBottom: '0.5px solid var(--border)' }}>
+                                                <span style={{ color: '#f59e0b' }}>{'★'.repeat(r.rating)}</span>
+                                                <span style={{ color: 'var(--text-secondary)', marginLeft: 6 }}>{r.customer.name}</span>
+                                                {r.comment && <span style={{ color: 'var(--text-secondary)', marginLeft: 6 }}>— "{r.comment}"</span>}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         )}

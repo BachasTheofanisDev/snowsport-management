@@ -113,15 +113,19 @@ const getLessons = async (req, res) => {
       where: { schoolId: req.user.id },
       include: {
         instructor: { select: { id: true, name: true, specialty: true } },
-        bookings: true
+        bookings: {
+          include: {
+            review: true
+          }
+        }
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }]
-    });
-    res.json(lessons);
+    })
+    res.json(lessons)
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message })
   }
-};
+}
 
 // Διαγραφή μαθήματος
 const deleteLesson = async (req, res) => {

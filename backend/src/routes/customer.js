@@ -61,4 +61,68 @@ router.get('/open-groups', async (req, res) => {
     }
 })
 
+// Προφίλ σχολής
+router.get('/schools/:id', async (req, res) => {
+    const prisma = require('../prisma/client')
+    try {
+        const school = await prisma.school.findUnique({
+            where: { id: req.params.id },
+            select: {
+                id: true, name: true, phone: true,
+                instructors: {
+                    select: {
+                        id: true, name: true, specialty: true,
+                        reviews: {
+                            select: { rating: true }
+                        }
+                    }
+                }
+            }
+        })
+
+        if (!school) return res.status(404).json({ error: 'Η σχολή δεν βρέθηκε' })
+
+        // Υπολογισμός μέσου όρου ανά εκπαιδευτή
+        const instructorsWithRating = school.instructors.map(i => ({
+            ...i,
+            avgRating: i.reviews.length > 0
+                ? Math.round((i.reviews.reduce((sum, r) => sum + r.rating, 0) / i.reviews.length) * 10) / 10
+                : 0,
+            totalReviews: i.reviews.length
+        }))
+
+        res.json({ ...school, instructors: instructorsWithRating })
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+})
+
+// Προφίλ εκπαιδευτή
+router.get('/instructor/:id', async (req, res) => {
+    const prisma = require('../prisma/client')
+    try {
+        const instructor = await prisma.instructor.findUnique({
+            where: { id: req.params.id },
+            select: {
+                id: true, name: true, specialty: true, phone: true,
+                reviews: {
+                    include: { customer: { select: { name: true } } },
+                    orderBy: { createdAt: 'desc' },
+                    take: 5
+                }
+            }
+        })
+
+        if (!instructor) return res.status(404).json({ error: 'Ο εκπαιδευτής δεν βρέθηκε' })
+
+        const avgRating = instructor.reviews.length > 0
+            ? Math.round((instructor.reviews.reduce((sum, r) => sum + r.rating, 0) / instructor.reviews.length) * 10) / 10
+            : 0
+
+        res.json({ ...instructor, avgRating, totalReviews: instructor.reviews.length })
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+})
+
 module.exports = router

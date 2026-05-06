@@ -425,6 +425,11 @@ function SchoolDashboard() {
                         <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: '6px 10px', background: b.status === 'cancelled' ? 'var(--cancelled)' : 'var(--ice)', borderRadius: 'var(--radius-sm)' }}>
                           <span style={{ fontSize: 12, color: b.status === 'cancelled' ? 'var(--cancelled-text)' : 'var(--text-secondary)' }}>
                             👤 {b.customerName} — 📞 {b.customerPhone}
+                            {b.review && (
+                              <span style={{ marginLeft: 8, color: '#f59e0b' }}>
+                                {'★'.repeat(b.review.rating)} {b.review.comment && `— "${b.review.comment}"`}
+                              </span>
+                            )}
                           </span>
                           {b.status !== 'cancelled' && (
                             <button className="btn btn-danger btn-sm" onClick={() => handleCancelBooking(b.id)}>

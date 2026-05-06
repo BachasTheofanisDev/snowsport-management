@@ -8,6 +8,7 @@ const schoolRoutes = require('./src/routes/school');
 const instructorRoutes = require('./src/routes/instructor');
 const lessonRoutes = require('./src/routes/lesson');
 const customerRoutes = require('./src/routes/customer')
+const reviewRoutes = require('./src/routes/review')
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +23,7 @@ app.use('/api/school', schoolRoutes);
 app.use('/api/instructor', instructorRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/customer', customerRoutes)
+app.use('/api/reviews', reviewRoutes)
 
 // Test route
 app.get('/', async (req, res) => {
