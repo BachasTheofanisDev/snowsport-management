@@ -2,10 +2,20 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('../prisma/client')
 const { calculatePrice } = require('../utils/pricing')
+const {
+  assertWithinWorkingHours,
+  assertNotPastDate,
+  assertInstructorAvailable
+} = require('../utils/scheduleValidation')
+const { syncLessonStatus } = require('./lessonController')
 
 // Εγγραφή πελάτη
-const register = async (req, res) => {
+const register = async (req, res, next) => {
     const { name, email, password, phone } = req.body
+
+    if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Όνομα, email και κωδικός είναι υποχρεωτικά' })
+    }
 
     try {
         const existing = await prisma.customer.findUnique({ where: { email } })
@@ -28,64 +38,66 @@ const register = async (req, res) => {
         const { password: _, ...customerWithoutPassword } = customer
         res.status(201).json({ token, user: customerWithoutPassword, role: 'customer' })
     } catch (error) {
-        res.status(500).json({ error: error.message })
+        next(error)
     }
 }
 
 // Διαθέσιμες ώρες εκπαιδευτή για μια ημερομηνία
-const getAvailableSlots = async (req, res) => {
+const getAvailableSlots = async (req, res, next) => {
     const { date, schoolId } = req.query
 
     try {
-        // Βρες όλους τους εκπαιδευτές της σχολής
         const instructors = await prisma.instructor.findMany({
             where: { schoolId },
             select: { id: true, name: true, specialty: true }
         })
 
-        // Για κάθε εκπαιδευτή βρες τα κατειλημμένα slots
-        const result = await Promise.all(instructors.map(async (instructor) => {
-            const lessons = await prisma.lesson.findMany({
-                where: {
-                    instructorId: instructor.id,
-                    date: new Date(date),
-                    status: { not: 'cancelled' }
-                },
-                select: { startTime: true, duration: true }
-            })
+        if (instructors.length === 0) return res.json([])
 
-            // Υπολόγισε κατειλημμένες ώρες
+        const lessons = await prisma.lesson.findMany({
+            where: {
+                instructorId: { in: instructors.map(i => i.id) },
+                date: new Date(date),
+                status: { not: 'cancelled' }
+            },
+            select: { instructorId: true, startTime: true, duration: true }
+        })
+
+        const lessonsByInstructor = new Map()
+        for (const l of lessons) {
+            if (!lessonsByInstructor.has(l.instructorId)) {
+                lessonsByInstructor.set(l.instructorId, [])
+            }
+            lessonsByInstructor.get(l.instructorId).push(l)
+        }
+
+        const allHours = [9, 10, 11, 12, 13, 14, 15]
+
+        const result = instructors.map(instructor => {
+            const instructorLessons = lessonsByInstructor.get(instructor.id) || []
             const bookedHours = []
-            lessons.forEach(lesson => {
+            for (const lesson of instructorLessons) {
                 const start = parseInt(lesson.startTime.split(':')[0])
                 for (let i = 0; i < lesson.duration; i++) {
                     bookedHours.push(start + i)
                 }
-            })
-
-            // Ελεύθερες ώρες (09:00 - 15:00)
-            const allHours = [9, 10, 11, 12, 13, 14, 15]
-            const availableHours = allHours.filter(h => !bookedHours.includes(h))
-
-            return {
-                ...instructor,
-                bookedHours,
-                availableHours
             }
-        }))
+            const availableHours = allHours.filter(h => !bookedHours.includes(h))
+            return { ...instructor, bookedHours, availableHours }
+        })
 
         res.json(result)
     } catch (error) {
-        res.status(500).json({ error: error.message })
+        next(error)
     }
 }
 
 // Κράτηση μαθήματος (με login)
-const bookLesson = async (req, res) => {
+const bookLesson = async (req, res, next) => {
     const { lessonId, isOpenGroup, date, startTime, duration, sport, level, schoolId, instructorId, persons = 1 } = req.body
 
     try {
-        // Αν είναι join σε υπάρχον open group
+        // Join σε υπάρχον open group
         if (isOpenGroup && lessonId) {
             const lesson = await prisma.lesson.findUnique({
                 where: { id: lessonId },
@@ -100,7 +112,6 @@ const bookLesson = async (req, res) => {
                 return res.status(400).json({ error: 'Δεν υπάρχουν διαθέσιμες θέσεις' })
             }
 
-            // Έλεγχος αν έχει ήδη κλείσει ο πελάτης
             const existing = await prisma.booking.findFirst({
                 where: { lessonId, customerId: req.user.id, status: { not: 'cancelled' } }
             })
@@ -121,74 +132,27 @@ const bookLesson = async (req, res) => {
                 }
             })
 
-            // Αν φτάσαμε το min → confirmed το μάθημα
-            const totalBookings = lesson.bookings.length + 1
-            if (totalBookings >= lesson.minPersons) {
-                await prisma.lesson.update({
-                    where: { id: lessonId },
-                    data: { status: 'confirmed', persons: totalBookings }
-                })
-            } else {
-                await prisma.lesson.update({
-                    where: { id: lessonId },
-                    data: { persons: totalBookings }
-                })
-            }
+            await syncLessonStatus(lessonId)
 
             return res.status(201).json(booking)
         }
-
-        const customer = await prisma.customer.findUnique({ where: { id: req.user.id } })
 
         // Έλεγχος ατόμων
         if (persons < 1 || persons > 10) {
             return res.status(400).json({ error: 'Ο αριθμός ατόμων πρέπει να είναι μεταξύ 1 και 10' })
         }
 
-        // Έλεγχος ημερομηνίας
-        const lessonDate = new Date(date)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        if (lessonDate < today) {
-            return res.status(400).json({ error: 'Δεν μπορείς να κλείσεις μάθημα σε παρελθοντική ημερομηνία' })
+        assertNotPastDate(date)
+
+        if (instructorId) {
+            assertWithinWorkingHours(startTime, duration)
+            await assertInstructorAvailable(prisma, { instructorId, date, startTime, duration })
         }
 
-        // Υπολογισμός τιμής
+        const customer = await prisma.customer.findUnique({ where: { id: req.user.id } })
         const price = calculatePrice(persons, duration)
         const type = persons > 1 ? 'group' : 'individual'
 
-        // Αν έχει επιλεγεί εκπαιδευτής, έλεγχος επικάλυψης
-        if (instructorId) {
-            const timeToMinutes = (time) => {
-                const [hours, minutes] = time.split(':').map(Number)
-                return hours * 60 + minutes
-            }
-
-            const startMinutes = timeToMinutes(startTime)
-            const endMinutes = startMinutes + duration * 60
-
-            if (startMinutes < timeToMinutes('09:00') || endMinutes > timeToMinutes('16:00')) {
-                return res.status(400).json({ error: 'Το μάθημα πρέπει να είναι μεταξύ 09:00 και 16:00' })
-            }
-
-            const existingLessons = await prisma.lesson.findMany({
-                where: {
-                    instructorId,
-                    date: new Date(date),
-                    status: { not: 'cancelled' }
-                }
-            })
-
-            for (const lesson of existingLessons) {
-                const existingStart = timeToMinutes(lesson.startTime)
-                const existingEnd = existingStart + lesson.duration * 60
-                if (startMinutes < existingEnd && endMinutes > existingStart) {
-                    return res.status(400).json({ error: 'Ο εκπαιδευτής δεν είναι διαθέσιμος αυτή την ώρα' })
-                }
-            }
-        }
-
-        // Δημιουργία μαθήματος και κράτησης
         const lesson = await prisma.lesson.create({
             data: {
                 date: new Date(date),
@@ -219,12 +183,12 @@ const bookLesson = async (req, res) => {
 
         res.status(201).json(lesson)
     } catch (error) {
-        res.status(500).json({ error: error.message })
+        next(error)
     }
 }
 
 // Λίστα κρατήσεων πελάτη
-const getMyBookings = async (req, res) => {
+const getMyBookings = async (req, res, next) => {
     try {
         const bookings = await prisma.booking.findMany({
             where: { customerId: req.user.id },
@@ -240,12 +204,12 @@ const getMyBookings = async (req, res) => {
         })
         res.json(bookings)
     } catch (error) {
-        res.status(500).json({ error: error.message })
+        next(error)
     }
 }
 
 // Ακύρωση κράτησης από πελάτη
-const cancelMyBooking = async (req, res) => {
+const cancelMyBooking = async (req, res, next) => {
     try {
         const booking = await prisma.booking.findFirst({
             where: { id: req.params.id, customerId: req.user.id }
@@ -264,15 +228,11 @@ const cancelMyBooking = async (req, res) => {
             data: { status: 'cancelled' }
         })
 
-        // Αλλαγή status του lesson σε cancelled
-        await prisma.lesson.update({
-            where: { id: booking.lessonId },
-            data: { status: 'cancelled' }
-        })
+        await syncLessonStatus(booking.lessonId)
 
         res.json({ message: 'Η κράτηση ακυρώθηκε επιτυχώς' })
     } catch (error) {
-        res.status(500).json({ error: error.message })
+        next(error)
     }
 }
 

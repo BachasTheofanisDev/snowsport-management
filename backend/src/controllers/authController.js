@@ -10,40 +10,44 @@ const generateToken = (user, role) => {
   );
 };
 
-// Login για όλους τους ρόλους
-const login = async (req, res) => {
+const findUserByEmail = async (email) => {
+  const tables = [
+    { model: 'resort', role: 'resort' },
+    { model: 'school', role: 'school' },
+    { model: 'instructor', role: 'instructor' },
+    { model: 'customer', role: 'customer' }
+  ];
+
+  for (const { model, role } of tables) {
+    const user = await prisma[model].findUnique({ where: { email } });
+    if (user) return { user, role };
+  }
+  return { user: null, role: null };
+};
+
+const login = async (req, res, next) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email και κωδικός είναι υποχρεωτικά' });
+  }
+
   try {
-    // Ψάχνουμε σε όλους τους πίνακες
-    let user = await prisma.resort.findUnique({ where: { email } });
-    let role = 'resort';
+    const { user, role } = await findUserByEmail(email);
 
+    // Generic message to prevent user enumeration
     if (!user) {
-      user = await prisma.school.findUnique({ where: { email } })
-      if (user && !user.isActive) {
-        return res.status(403).json({ error: 'Ο λογαριασμός σας έχει απενεργοποιηθεί' })
-      }
-      role = 'school'
-    }
-
-    if (!user) {
-      user = await prisma.instructor.findUnique({ where: { email } });
-      role = 'instructor';
-    }
-
-    if (!user) {
-      user = await prisma.customer.findUnique({ where: { email } });
-      role = 'customer';
-    }
-
-    if (!user) {
-      return res.status(404).json({ error: 'Ο χρήστης δεν βρέθηκε' });
+      return res.status(401).json({ error: 'Λάθος email ή κωδικός' });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ error: 'Λάθος κωδικός' });
+      return res.status(401).json({ error: 'Λάθος email ή κωδικός' });
+    }
+
+    // Active-account check happens after credential verification
+    if (role === 'school' && !user.isActive) {
+      return res.status(403).json({ error: 'Ο λογαριασμός σας έχει απενεργοποιηθεί' });
     }
 
     const token = generateToken(user, role);
@@ -51,7 +55,7 @@ const login = async (req, res) => {
 
     res.json({ token, user: userWithoutPassword, role });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
