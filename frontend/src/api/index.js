@@ -57,3 +57,5 @@ export const getMyReviews = () => API.get('/instructor/reviews')
 
 export const getSchoolProfile = (id) => API.get(`/customer/schools/${id}`)
 export const getInstructorProfile = (id) => API.get(`/customer/instructor/${id}`)
+
+export const evaluateLevel = (answers) => API.post('/quiz/evaluate', { answers })

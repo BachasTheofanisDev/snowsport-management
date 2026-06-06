@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getAvailableSlots, bookLesson, getOpenGroups, joinOpenGroup, getSchoolProfile, getInstructorProfile } from '../api'
+import LevelQuiz from './LevelQuiz'
 import axios from 'axios'
 
 function NewBookingForm({ onBookingComplete }) {
@@ -19,6 +20,7 @@ function NewBookingForm({ onBookingComplete }) {
     const [openGroups, setOpenGroups] = useState([])
     const [schoolProfile, setSchoolProfile] = useState(null)
     const [instructorProfile, setInstructorProfile] = useState(null)
+    const [showQuiz, setShowQuiz] = useState(false)
 
     useEffect(() => {
         // Φόρτωσε τις σχολές
@@ -108,6 +110,17 @@ function NewBookingForm({ onBookingComplete }) {
 
     return (
         <div className="card">
+            {showQuiz && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <div style={{ width: '100%', maxWidth: 520, position: 'relative' }}>
+                        <button onClick={() => setShowQuiz(false)}
+                            style={{ position: 'absolute', top: -40, right: 0, background: 'none', border: 'none', color: 'white', fontSize: 24, cursor: 'pointer', zIndex: 1 }}>
+                            ✕
+                        </button>
+                        <LevelQuiz onResult={(lvl) => { setLevel(lvl); setShowQuiz(false) }} />
+                    </div>
+                </div>
+            )}
             <div className="card-header">
                 <span className="card-title">Νέα Κράτηση</span>
             </div>
@@ -176,7 +189,13 @@ function NewBookingForm({ onBookingComplete }) {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Επίπεδο</label>
+                                <label className="form-label">
+                                    Επίπεδο
+                                    <button type="button" onClick={() => setShowQuiz(true)}
+                                        style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>
+                                        🤖 Δεν ξέρω το επίπεδό μου
+                                    </button>
+                                </label>
                                 <select className="form-select" value={level} onChange={e => setLevel(e.target.value)}>
                                     <option value="beginner">Αρχάριος</option>
                                     <option value="intermediate">Μεσαίο</option>
