@@ -6,6 +6,15 @@ datasource db {
   provider = "postgresql"
 }
 
+model SuperAdmin {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Χιονοδρομικό Κέντρο
 model Resort {
   id        String   @id @default(uuid())
@@ -31,7 +40,7 @@ model School {
   updatedAt DateTime @updatedAt
 
   resortId    String
-  resort      Resort       @relation(fields: [resortId], references: [id])
+  resort      Resort       @relation(fields: [resortId], references: [id], onDelete: Cascade)
   instructors Instructor[]
   lessons     Lesson[]
 }
@@ -73,7 +82,7 @@ model Lesson {
   schoolId     String
   school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   instructorId String?
-  instructor   Instructor? @relation(fields: [instructorId], references: [id])
+  instructor   Instructor? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
   bookings     Booking[]
 }
 
@@ -101,9 +110,9 @@ model Booking {
   updatedAt     DateTime @updatedAt
 
   lessonId      String
-  lesson        Lesson    @relation(fields: [lessonId], references: [id])
+  lesson        Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   customerId    String?
-  customer      Customer? @relation(fields: [customerId], references: [id])
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   review    Review?
 }
@@ -115,9 +124,9 @@ model Review {
   createdAt  DateTime @default(now())
 
   bookingId    String   @unique
-  booking      Booking  @relation(fields: [bookingId], references: [id])
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   customerId   String
-  customer     Customer @relation(fields: [customerId], references: [id])
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   instructorId String
-  instructor   Instructor @relation(fields: [instructorId], references: [id])
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
 }

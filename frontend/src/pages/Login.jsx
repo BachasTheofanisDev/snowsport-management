@@ -14,7 +14,8 @@ function Login() {
 
   useEffect(() => {
     if (user && role) {
-      if (role === 'resort') navigate('/resort')
+      if (role === 'superadmin') navigate('/superadmin')
+      else if (role === 'resort') navigate('/resort')
       else if (role === 'school') navigate('/school')
       else if (role === 'instructor') navigate('/instructor')
       else if (role === 'customer') navigate('/customer')
@@ -28,7 +29,8 @@ function Login() {
     try {
       const res = await login({ email, password })
       loginUser(res.data.user, res.data.role, res.data.token)
-      if (res.data.role === 'resort') navigate('/resort')
+      if (res.data.role === 'superadmin') navigate('/superadmin')
+      else if (res.data.role === 'resort') navigate('/resort')
       else if (res.data.role === 'school') navigate('/school')
       else if (res.data.role === 'instructor') navigate('/instructor')
       else if (res.data.role === 'customer') navigate('/customer')

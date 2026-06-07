@@ -6,6 +6,7 @@ import InstructorDashboard from './pages/InstructorDashboard'
 import CustomerDashboard from './pages/CustomerDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import Register from './pages/Register'
+import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
 function App() {
   return (
@@ -31,6 +32,11 @@ function App() {
         <Route path="/customer" element={
           <ProtectedRoute allowedRoles={['customer']}>
             <CustomerDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/superadmin" element={
+          <ProtectedRoute allowedRoles={['superadmin']}>
+            <SuperAdminDashboard />
           </ProtectedRoute>
         } />
       </Routes>

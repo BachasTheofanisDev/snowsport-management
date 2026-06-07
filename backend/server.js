@@ -10,6 +10,7 @@ const customerRoutes = require('./src/routes/customer')
 const reviewRoutes = require('./src/routes/review')
 const errorHandler = require('./src/middleware/errorHandler')
 const quizRoutes = require('./src/routes/quiz')
+const superAdminRoutes = require('./src/routes/superAdmin')
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,7 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/customer', customerRoutes)
 app.use('/api/reviews', reviewRoutes)
 app.use('/api/quiz', quizRoutes)
+app.use('/api/superadmin', superAdminRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'Snowsport Management API is running! 🏔' });

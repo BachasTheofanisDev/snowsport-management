@@ -12,6 +12,7 @@ const generateToken = (user, role) => {
 
 const findUserByEmail = async (email) => {
   const tables = [
+    { model: 'superAdmin', role: 'superadmin' },
     { model: 'resort', role: 'resort' },
     { model: 'school', role: 'school' },
     { model: 'instructor', role: 'instructor' },

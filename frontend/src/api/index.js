@@ -59,3 +59,9 @@ export const getSchoolProfile = (id) => API.get(`/customer/schools/${id}`)
 export const getInstructorProfile = (id) => API.get(`/customer/instructor/${id}`)
 
 export const evaluateLevel = (answers) => API.post('/quiz/evaluate', { answers })
+
+export const getOverview = () => API.get('/superadmin/overview')
+export const getAllResorts = () => API.get('/superadmin/resorts')
+export const getAllCustomers = () => API.get('/superadmin/customers')
+export const createResortAdmin = (data) => API.post('/superadmin/resorts', data)
+export const deleteResortAdmin = (id) => API.delete(`/superadmin/resorts/${id}`)
