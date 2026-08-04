@@ -130,6 +130,115 @@ async function main() {
     })
     console.log('✅ Customers created')
 
+    // ── Βοηθητικές ημερομηνίες ──
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+    const in3days = new Date(today); in3days.setDate(today.getDate() + 3)
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+
+    // ── Ατομικά μαθήματα ──
+    // Επιβεβαιωμένο (με εκπαιδευτή)
+    await prisma.lesson.create({
+        data: {
+            date: today, startTime: '10:00', duration: 2, sport: 'ski', level: 'beginner',
+            price: 100, type: 'individual', persons: 1, status: 'confirmed',
+            school: { connect: { id: school1.id } }, instructorId: instructor1.id,
+            bookings: { create: { customerId: customer1.id, customerName: customer1.name, customerPhone: customer1.phone, status: 'confirmed' } }
+        }
+    })
+
+    // Εκκρεμές ατομικό (χωρίς εκπαιδευτή → μπαίνει στο pending panel)
+    await prisma.lesson.create({
+        data: {
+            date: today, startTime: '12:00', duration: 1, sport: 'snowboard', level: 'intermediate',
+            price: 50, type: 'individual', persons: 1, status: 'pending',
+            school: { connect: { id: school1.id } },
+            bookings: { create: { customerId: customer2.id, customerName: customer2.name, customerPhone: customer2.phone, status: 'pending' } }
+        }
+    })
+
+    // Κλειστό ομαδικό (παρέα 3 ατόμων)
+    await prisma.lesson.create({
+        data: {
+            date: tomorrow, startTime: '11:00', duration: 2, sport: 'ski', level: 'beginner',
+            price: 150, type: 'group', persons: 3, status: 'confirmed',
+            school: { connect: { id: school1.id } }, instructorId: instructor2.id,
+            bookings: { create: { customerId: customer1.id, customerName: customer1.name, customerPhone: customer1.phone, status: 'confirmed' } }
+        }
+    })
+    console.log('✅ Individual lessons created')
+
+    // ── Ανοιχτά ομαδικά ──
+    // 1) Χωρίς ώρα ακόμα, 2 συμμετέχοντες με προτιμήσεις (δεν έφτασε το min=4)
+    await prisma.lesson.create({
+        data: {
+            date: in3days, startTime: null, duration: 2, sport: 'ski', level: 'beginner',
+            price: 40, type: 'open_group', persons: 2, maxPersons: 10, minPersons: 4, status: 'pending',
+            school: { connect: { id: school1.id } },
+            bookings: {
+                create: [
+                    { customerId: customer1.id, customerName: customer1.name, customerPhone: customer1.phone, status: 'confirmed', preferredHours: [10, 11, 12] },
+                    { customerId: customer2.id, customerName: customer2.name, customerPhone: customer2.phone, status: 'confirmed', preferredHours: [11, 12] }
+                ]
+            }
+        }
+    })
+
+    // 2) Κλειδωμένο ανοιχτό (έχει ώρα + εκπαιδευτή, 4 άτομα → confirmed)
+    await prisma.lesson.create({
+        data: {
+            date: tomorrow, startTime: '13:00', duration: 1, sport: 'snowboard', level: 'intermediate',
+            price: 20, type: 'open_group', persons: 4, maxPersons: 10, minPersons: 4, status: 'confirmed',
+            school: { connect: { id: school1.id } }, instructorId: instructor2.id,
+            bookings: {
+                create: [
+                    { customerName: 'Δημήτρης Κ.', customerPhone: '6970000001', status: 'confirmed', preferredHours: [13] },
+                    { customerName: 'Ελένη Μ.', customerPhone: '6970000002', status: 'confirmed', preferredHours: [13, 14] },
+                    { customerId: customer1.id, customerName: customer1.name, customerPhone: customer1.phone, status: 'confirmed', preferredHours: [13] },
+                    { customerId: customer2.id, customerName: customer2.name, customerPhone: customer2.phone, status: 'confirmed', preferredHours: [13, 14] }
+                ]
+            }
+        }
+    })
+    console.log('✅ Open group lessons created')
+
+    // ── Παρελθοντικό μάθημα + αξιολόγηση (για μέσο όρο σχολής) ──
+    const pastLesson = await prisma.lesson.create({
+        data: {
+            date: yesterday, startTime: '09:00', duration: 1, sport: 'ski', level: 'beginner',
+            price: 50, type: 'individual', persons: 1, status: 'confirmed',
+            school: { connect: { id: school1.id } }, instructorId: instructor1.id,
+            bookings: { create: { customerId: customer1.id, customerName: customer1.name, customerPhone: customer1.phone, status: 'confirmed' } }
+        },
+        include: { bookings: true }
+    })
+
+    await prisma.review.create({
+        data: {
+            rating: 5, comment: 'Εξαιρετικός εκπαιδευτής, πολύ υπομονετικός!',
+            bookingId: pastLesson.bookings[0].id, customerId: customer1.id, instructorId: instructor1.id
+        }
+    })
+
+    // Δεύτερη αξιολόγηση για διαφορετικό εκπαιδευτή
+    const pastLesson2 = await prisma.lesson.create({
+        data: {
+            date: yesterday, startTime: '11:00', duration: 1, sport: 'ski', level: 'intermediate',
+            price: 50, type: 'individual', persons: 1, status: 'confirmed',
+            school: { connect: { id: school1.id } }, instructorId: instructor2.id,
+            bookings: { create: { customerId: customer2.id, customerName: customer2.name, customerPhone: customer2.phone, status: 'confirmed' } }
+        },
+        include: { bookings: true }
+    })
+
+    await prisma.review.create({
+        data: {
+            rating: 4, comment: 'Πολύ καλή εμπειρία!',
+            bookingId: pastLesson2.bookings[0].id, customerId: customer2.id, instructorId: instructor2.id
+        }
+    })
+    console.log('✅ Past lessons + reviews created')
+
     console.log('\n🎉 Seeding completed!')
     console.log('\n📋 Στοιχεία σύνδεσης:')
     console.log('─────────────────────────────────')
