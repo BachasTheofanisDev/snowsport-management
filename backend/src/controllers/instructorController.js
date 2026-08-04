@@ -68,4 +68,79 @@ const getMyReviews = async (req, res) => {
   }
 }
 
-module.exports = { createInstructor, getLessons, getMyReviews }
+const uploadImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Δεν επιλέχθηκε εικόνα' })
+    }
+    const imagePath = `/uploads/${req.file.filename}`
+    const instructor = await prisma.instructor.update({
+      where: { id: req.user.id },
+      data: { image: imagePath }
+    })
+    res.json({ image: instructor.image })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+const getMySchool = async (req, res) => {
+  try {
+    const instructor = await prisma.instructor.findUnique({
+      where: { id: req.user.id },
+      include: {
+        school: { select: { id: true, name: true, image: true } }
+      }
+    })
+    res.json(instructor.school)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+const getMyStats = async (req, res) => {
+  const { dateFrom, dateTo } = req.query
+  try {
+    const start = dateFrom ? new Date(dateFrom) : new Date(new Date().setHours(0,0,0,0))
+    const end = dateTo ? new Date(new Date(dateTo).setHours(23,59,59,999)) : new Date(new Date().setHours(23,59,59,999))
+
+    const lessons = await prisma.lesson.findMany({
+      where: {
+        instructorId: req.user.id,
+        date: { gte: start, lte: end },
+        status: { not: 'cancelled' }
+      }
+    })
+
+    const totalLessons = lessons.length
+    const individualLessons = lessons.filter(l => l.type !== 'open_group').length
+    const groupLessons = lessons.filter(l => l.type === 'open_group').length
+    const totalRevenue = lessons.reduce((sum, l) => sum + l.price, 0)
+
+    res.json({
+      period: { from: start, to: end },
+      totalLessons,
+      individualLessons,
+      groupLessons,
+      totalRevenue
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+const updateInfo = async (req, res) => {
+  const { description } = req.body
+  try {
+    const instructor = await prisma.instructor.update({
+      where: { id: req.user.id },
+      data: { description }
+    })
+    const { password, ...rest } = instructor
+    res.json(rest)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+module.exports = { createInstructor, getLessons, getMyReviews, uploadImage, getMySchool, getMyStats, updateInfo };

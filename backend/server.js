@@ -32,6 +32,7 @@ app.use('/api/customer', customerRoutes)
 app.use('/api/reviews', reviewRoutes)
 app.use('/api/quiz', quizRoutes)
 app.use('/api/superadmin', superAdminRoutes)
+app.use('/uploads', express.static('uploads'))
 
 app.get('/', (req, res) => {
   res.json({ message: 'Snowsport Management API is running! 🏔' });

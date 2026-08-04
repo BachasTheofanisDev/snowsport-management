@@ -3,11 +3,11 @@ const jwt = require('jsonwebtoken')
 const prisma = require('../prisma/client')
 const { calculatePrice } = require('../utils/pricing')
 const {
-  assertWithinWorkingHours,
-  assertNotPastDate,
-  assertInstructorAvailable
+    assertWithinWorkingHours,
+    assertNotPastDate,
+    assertInstructorAvailable
 } = require('../utils/scheduleValidation')
-const { syncLessonStatus } = require('./lessonController')
+const { syncLessonStatus, autoLockOpenGroupTime } = require('./lessonController')
 
 // Εγγραφή πελάτη
 const register = async (req, res, next) => {
@@ -128,10 +128,12 @@ const bookLesson = async (req, res, next) => {
                     customerId: req.user.id,
                     customerName: customer.name,
                     customerPhone: customer.phone || '',
+                    preferredHours: req.body.preferredHours || [],
                     status: 'confirmed'
                 }
             })
 
+            await autoLockOpenGroupTime(lessonId)  // έλεγξε αν κλειδώνει η ώρα
             await syncLessonStatus(lessonId)
 
             return res.status(201).json(booking)
@@ -193,16 +195,31 @@ const getMyBookings = async (req, res, next) => {
         const bookings = await prisma.booking.findMany({
             where: { customerId: req.user.id },
             include: {
+                review: true,
                 lesson: {
                     include: {
                         instructor: { select: { id: true, name: true } },
-                        school: { select: { id: true, name: true } }
+                        school: { select: { id: true, name: true } },
+                        bookings: {
+                            where: { status: { not: 'cancelled' } },
+                            select: { id: true }
+                        }
                     }
                 }
             },
             orderBy: { createdAt: 'desc' }
         })
-        res.json(bookings)
+
+        // Πρόσθεσε το πλήθος συμμετεχόντων σε κάθε μάθημα
+        const withCounts = bookings.map(b => ({
+            ...b,
+            lesson: b.lesson ? {
+                ...b.lesson,
+                participantCount: b.lesson.bookings?.length || 0
+            } : null
+        }))
+
+        res.json(withCounts)
     } catch (error) {
         next(error)
     }

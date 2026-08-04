@@ -22,6 +22,20 @@ model Resort {
   email     String   @unique
   password  String
   phone     String?
+  image     String?
+  description   String?
+  baseAltitude  Int?
+  peakAltitude  Int?
+  liftsCount    Int?     @default(0)
+  totalSlopeLength  Float?
+  slopesGreen   Int?     @default(0)
+  slopesBlue    Int?     @default(0)
+  slopesRed     Int?     @default(0)
+  slopesBlack   Int?     @default(0)
+  location      String?
+  openingHours  String?
+  mapImage      String?
+  gallery   String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -30,14 +44,17 @@ model Resort {
 
 // Σχολή Σκι
 model School {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  phone       String?
+  image       String?
+  description String?
+  gallery     String[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   resortId    String
   resort      Resort       @relation(fields: [resortId], references: [id], onDelete: Cascade)
@@ -52,7 +69,9 @@ model Instructor {
   email     String   @unique
   password  String
   phone     String?
-  specialty String[] // ["ski", "snowboard"]
+  specialty String[]
+  image     String?
+  description String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -66,7 +85,7 @@ model Instructor {
 model Lesson {
   id          String   @id @default(uuid())
   date        DateTime
-  startTime   String
+  startTime   String?
   duration    Int
   sport       String
   level       String
@@ -102,19 +121,19 @@ model Customer {
 
 // Κράτηση
 model Booking {
-  id            String   @id @default(uuid())
-  customerName  String
-  customerPhone String
-  status        String   @default("confirmed") // "confirmed" | "cancelled"
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  customerName   String
+  customerPhone  String
+  status         String   @default("confirmed")
+  preferredHours Int[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  lessonId      String
-  lesson        Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  customerId    String?
-  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  review    Review?
+  lessonId   String
+  lesson     Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  review     Review?
 }
 
 model Review {

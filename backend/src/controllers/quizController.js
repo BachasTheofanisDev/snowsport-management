@@ -30,7 +30,7 @@ const evaluateLevel = async (req, res) => {
 
         const text = completion.choices[0].message.content
         const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim()
-        const parsed = JSON.parse(cleaned)
+           const parsed = JSON.parse(cleaned)
 
         res.json(parsed)
     } catch (error) {

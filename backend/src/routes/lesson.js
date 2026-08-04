@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createLesson, getLessons, deleteLesson, updateLesson, cancelBooking, assignInstructor, createOpenGroupLesson } = require('../controllers/lessonController');
+const { createLesson, getLessons, deleteLesson, updateLesson, cancelBooking, assignInstructor, createOpenGroupLesson, moveLesson, lockOpenGroup, unassignInstructor } = require('../controllers/lessonController');
 const auth = require('../middleware/auth');
 
 // Δημιουργία μαθήματος (μόνο η Σχολή)
@@ -105,5 +105,11 @@ router.get('/stats', auth(['school']), async (req, res) => {
 
 // Δημιουργία Open Ομαδικού Μαθήματος
 router.post('/open-group', auth(['school']), createOpenGroupLesson)
+
+router.patch('/:id/move', auth(['school']), moveLesson)
+
+router.patch('/:id/lock-open-group', auth(['school']), lockOpenGroup)
+
+router.patch('/:id/unassign', auth(['school']), unassignInstructor)
 
 module.exports = router;

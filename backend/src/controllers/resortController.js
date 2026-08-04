@@ -80,4 +80,116 @@ const deleteSchool = async (req, res) => {
   }
 }
 
-module.exports = { createResort, getSchools, toggleSchool, deleteSchool }
+// Upload φωτογραφίας χιονοδρομικού
+const uploadImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Δεν επιλέχθηκε εικόνα' })
+    }
+
+    const imagePath = `/uploads/${req.file.filename}`
+
+    const resort = await prisma.resort.update({
+      where: { id: req.user.id },
+      data: { image: imagePath }
+    })
+
+    res.json({ image: resort.image })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+const updateInfo = async (req, res) => {
+  const {
+    description, baseAltitude, peakAltitude, liftsCount, totalSlopeLength,
+    slopesGreen, slopesBlue, slopesRed, slopesBlack, location, openingHours, phone
+  } = req.body
+
+  try {
+    const resort = await prisma.resort.update({
+      where: { id: req.user.id },
+      data: {
+        description,
+        baseAltitude: baseAltitude ? parseInt(baseAltitude) : null,
+        peakAltitude: peakAltitude ? parseInt(peakAltitude) : null,
+        liftsCount: liftsCount ? parseInt(liftsCount) : 0,
+        totalSlopeLength: totalSlopeLength ? parseFloat(totalSlopeLength) : null,
+        slopesGreen: slopesGreen ? parseInt(slopesGreen) : 0,
+        slopesBlue: slopesBlue ? parseInt(slopesBlue) : 0,
+        slopesRed: slopesRed ? parseInt(slopesRed) : 0,
+        slopesBlack: slopesBlack ? parseInt(slopesBlack) : 0,
+        location,
+        openingHours,
+        phone
+      }
+    })
+    const { password, ...rest } = resort
+    res.json(rest)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// Upload χάρτη
+const uploadMap = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε εικόνα' })
+    const imagePath = `/uploads/${req.file.filename}`
+    const resort = await prisma.resort.update({
+      where: { id: req.user.id },
+      data: { mapImage: imagePath }
+    })
+    res.json({ mapImage: resort.mapImage })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// Upload φωτογραφιών στη gallery (πολλαπλό)
+const uploadGallery = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'Δεν επιλέχθηκαν εικόνες' })
+    }
+    const newPaths = req.files.map(f => `/uploads/${f.filename}`)
+    const resort = await prisma.resort.findUnique({ where: { id: req.user.id } })
+    const updated = await prisma.resort.update({
+      where: { id: req.user.id },
+      data: { gallery: [...resort.gallery, ...newPaths] }
+    })
+    res.json({ gallery: updated.gallery })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// Διαγραφή φωτογραφίας από gallery
+const deleteGalleryImage = async (req, res) => {
+  const { imagePath } = req.body
+  try {
+    const resort = await prisma.resort.findUnique({ where: { id: req.user.id } })
+    const updated = await prisma.resort.update({
+      where: { id: req.user.id },
+      data: { gallery: resort.gallery.filter(img => img !== imagePath) }
+    })
+    res.json({ gallery: updated.gallery })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+
+// Ορισμός κύριας φωτογραφίας (banner)
+const setMainImage = async (req, res) => {
+  const { imagePath } = req.body
+  try {
+    const resort = await prisma.resort.update({
+      where: { id: req.user.id },
+      data: { image: imagePath }
+    })
+    res.json({ image: resort.image })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+module.exports = { createResort, getSchools, toggleSchool, deleteSchool, updateInfo, uploadMap, uploadGallery, deleteGalleryImage, setMainImage }

@@ -25,8 +25,8 @@ const getAllResorts = async (req, res) => {
                 id: true, name: true, email: true, phone: true, createdAt: true,
                 schools: {
                     select: {
-                        id: true, name: true, email: true, isActive: true,
-                        instructors: { select: { id: true, name: true } },
+                        id: true, name: true, email: true, phone: true, isActive: true,
+                        instructors: { select: { id: true, name: true, email: true, phone: true } },
                         lessons: { select: { id: true } }
                     }
                 }
@@ -37,7 +37,6 @@ const getAllResorts = async (req, res) => {
         res.status(500).json({ error: error.message })
     }
 }
-
 // Λίστα όλων των πελατών
 const getAllCustomers = async (req, res) => {
     try {

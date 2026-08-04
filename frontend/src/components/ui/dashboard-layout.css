@@ -1,0 +1,577 @@
+/* dashboard-layout.css — new classes for the redesigned SchoolDashboard shell.
+   Reuses your existing CSS variables from index.css (--navy, --accent, --ice, etc.).
+   Import this once at the top of SchoolDashboard.jsx: import './dashboard-layout.css'
+   Place this file next to SchoolDashboard.jsx, or in src/styles/ and fix the import path. */
+
+.dash-shell {
+    display: flex;
+    min-height: 100vh;
+    background: var(--ice);
+    color: var(--text-primary);
+}
+
+/* ── Sidebar ── */
+.dash-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--navy);
+    color: rgba(255, 255, 255, 0.75);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.dash-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 20px 20px 18px;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.dash-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(126, 184, 247, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.dash-brand-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.dash-brand-sub {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.dash-nav {
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.dash-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-sm);
+    color: rgba(255, 255, 255, 0.7);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all 0.15s;
+}
+
+.dash-nav-item:hover {
+    background: rgba(126, 184, 247, 0.1);
+    color: #fff;
+}
+
+.dash-nav-item.active {
+    background: rgba(126, 184, 247, 0.18);
+    color: #fff;
+    font-weight: 600;
+}
+
+.dash-nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dash-nav-badge {
+    margin-left: auto;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 1px 8px;
+    border-radius: 20px;
+}
+
+.dash-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-top: 0.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.dash-user-email {
+    font-size: 12px;
+    font-weight: 500;
+    color: #e6ecf3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.dash-logout {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+}
+
+.dash-logout:hover {
+    color: var(--accent);
+}
+
+/* ── Main column ── */
+.dash-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dash-header {
+    height: 66px;
+    background: var(--snow);
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 26px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.dash-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.dash-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+
+.dash-content {
+    padding: 24px 26px;
+}
+
+.dash-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ── Avatars ── */
+.dash-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--ice);
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.dash-user .dash-avatar {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+}
+
+.dash-avatar.sm {
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+}
+
+/* ── KPIs ── */
+.dash-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.dash-kpi {
+    background: var(--snow);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+}
+
+.dash-kpi-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.dash-kpi-value {
+    font-size: 28px;
+    font-weight: 600;
+    margin-top: 10px;
+    letter-spacing: -0.5px;
+}
+
+.dash-kpi-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* ── Two column ── */
+.dash-two-col {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 16px;
+}
+
+.dash-link {
+    background: none;
+    border: none;
+    color: #185FA5;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.dash-muted {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+/* ── Today rows ── */
+.dash-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-top: 0.5px solid var(--border);
+}
+
+.dash-row:first-child {
+    border-top: none;
+}
+
+.dash-row-time {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 500;
+    width: 46px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-row-bar {
+    width: 4px;
+    height: 36px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.dash-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.dash-row-title {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dash-row-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* ── Instructor rows / grid ── */
+.dash-ins-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 0.5px solid var(--border);
+}
+
+.dash-ins-row:first-child {
+    border-top: none;
+}
+
+.dash-ins-main {
+    min-width: 0;
+}
+
+.dash-ins-name {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.dash-ins-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.dash-ins-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.dash-ins-card {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    background: var(--snow);
+}
+
+.dash-ins-card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dash-ins-contact {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 0.5px solid var(--border);
+}
+
+/* ── Forms wrap ── */
+.dash-form-wrap {
+    padding: 1.25rem;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--ice);
+}
+
+.dash-price-box {
+    background: var(--snow);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.dash-price {
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.dash-price-inline {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* ── Bookings ── */
+.dash-booking {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--ice);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.dash-booking[data-cancelled="true"] {
+    background: var(--cancelled);
+    color: var(--cancelled-text);
+}
+
+/* ── Group cards ── */
+.dash-group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.dash-group-card {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    background: var(--snow);
+}
+
+.dash-group-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.dash-group-when {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.dash-fill-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin: 12px 0 6px;
+}
+
+.dash-fill-track {
+    height: 8px;
+    border-radius: 6px;
+    background: var(--ice);
+    overflow: hidden;
+}
+
+.dash-fill-bar {
+    height: 100%;
+    border-radius: 6px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+    .dash-kpis {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dash-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .dash-sidebar {
+        width: 64px;
+    }
+
+    .dash-brand-name,
+    .dash-brand-sub,
+    .dash-nav-item span:not(.dash-nav-dot),
+    .dash-nav-badge,
+    .dash-user-info {
+        display: none;
+    }
+}
+
+
+/* ── Extra additions for full functionality ── */
+
+/* Preference bars (open group lock modal) */
+.dash-pref-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--snow);
+    transition: all 0.15s;
+}
+
+.dash-pref-row.selected {
+    border: 2px solid var(--accent);
+    background: var(--ice);
+}
+
+.dash-pref-track {
+    flex: 1;
+    height: 8px;
+    background: var(--ice);
+    border-radius: 100px;
+    overflow: hidden;
+}
+
+.dash-pref-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0284c7, #7dd3fc);
+    border-radius: 100px;
+}
+
+/* Gallery grid */
+.dash-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.dash-gallery-item {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.dash-gallery-item.main {
+    border: 3px solid var(--accent);
+}
+
+/* Hour picker buttons */
+.dash-hour-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+}
+
+.dash-hour-btn {
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--snow);
+    color: var(--text-secondary);
+}
+
+.dash-hour-btn.selected {
+    border: 2px solid var(--accent);
+    background: var(--ice);
+    color: var(--accent);
+}
+
+.dash-theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.dash-theme-toggle:hover {
+    background: var(--ice);
+}

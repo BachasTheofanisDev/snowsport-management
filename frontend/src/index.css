@@ -17,6 +17,24 @@
     --radius-sm: 8px;
 }
 
+/* ─────────── DARK THEME ─────────── */
+body.dark {
+    --navy: #1e3a5f;
+    --navy-mid: #24466f;
+    --accent: #7eb8f7;
+    --snow: #1a2332;
+    --ice: #0f1722;
+    --border: #2a3441;
+    --text-primary: #e8edf3;
+    --text-secondary: #94a3b8;
+    --confirmed: #1a2e14;
+    --confirmed-text: #86c95f;
+    --pending: #2e2412;
+    --pending-text: #e0a955;
+    --cancelled: #2e1616;
+    --cancelled-text: #e07979;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -101,7 +119,7 @@ body {
 }
 
 .stat-card {
-    background: white;
+    background: var(--snow);
     border: 0.5px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 1rem;
@@ -146,7 +164,7 @@ body {
     padding: 8px 16px;
     border-radius: var(--radius-sm);
     border: 0.5px solid var(--border);
-    background: white;
+    background: var(--snow);
     color: var(--text-secondary);
     cursor: pointer;
     font-family: inherit;
@@ -161,7 +179,7 @@ body {
 
 /* Cards */
 .card {
-    background: white;
+    background: var(--snow);
     border: 0.5px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
@@ -252,7 +270,7 @@ body {
     font-size: 14px;
     font-family: inherit;
     color: var(--text-primary);
-    background: white;
+    background: var(--snow);
     outline: none;
     transition: border-color 0.15s;
 }
@@ -270,7 +288,7 @@ body {
 
 /* Lesson items */
 .lesson-item {
-    background: white;
+    background: var(--snow);
     border: 0.5px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem 1.25rem;

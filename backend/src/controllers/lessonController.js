@@ -154,7 +154,6 @@ const updateLesson = async (req, res, next) => {
     next(error)
   }
 }
-
 // Συγχρονισμός status μαθήματος με βάση τις ενεργές κρατήσεις
 const syncLessonStatus = async (lessonId) => {
   const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } })
@@ -170,10 +169,10 @@ const syncLessonStatus = async (lessonId) => {
     data.persons = activeBookings
     if (activeBookings === 0) {
       data.status = 'cancelled'
-    } else if (activeBookings < lesson.minPersons) {
-      data.status = 'pending'
-    } else if (lesson.status === 'pending') {
-      data.status = 'confirmed'
+    } else {
+      // Επιβεβαιώνεται ΜΟΝΟ αν: μαζεύτηκε το min ΚΑΙ έχει οριστεί ώρα + εκπαιδευτής
+      const ready = activeBookings >= lesson.minPersons && lesson.startTime && lesson.instructorId
+      data.status = ready ? 'confirmed' : 'pending'
     }
   } else if (activeBookings === 0) {
     data.status = 'cancelled'
@@ -262,23 +261,19 @@ const assignInstructor = async (req, res, next) => {
     next(error)
   }
 }
-
-// Δημιουργία Open Ομαδικού Μαθήματος (από Σχολή)
+// Δημιουργία Open Ομαδικού Μαθήματος (από Σχολή) — χωρίς ώρα/εκπαιδευτή αρχικά
 const createOpenGroupLesson = async (req, res, next) => {
-  const { date, startTime, duration, sport, level, instructorId } = req.body
+  const { date, duration, sport, level } = req.body
 
   try {
     assertNotPastDate(date)
-    assertWithinWorkingHours(startTime, duration)
-    await assertInstructorBelongsToSchool(prisma, instructorId, req.user.id)
-    await assertInstructorAvailable(prisma, { instructorId, date, startTime, duration })
 
     const price = 20 * duration
 
     const lesson = await prisma.lesson.create({
       data: {
         date: new Date(date),
-        startTime,
+        startTime: null,
         duration,
         sport,
         level,
@@ -288,8 +283,7 @@ const createOpenGroupLesson = async (req, res, next) => {
         maxPersons: 10,
         minPersons: 4,
         status: 'pending',
-        schoolId: req.user.id,
-        instructorId: instructorId || null,
+        school: { connect: { id: req.user.id } },
       },
       include: {
         instructor: { select: { id: true, name: true } },
@@ -303,6 +297,218 @@ const createOpenGroupLesson = async (req, res, next) => {
   }
 }
 
+// Μετακίνηση μαθήματος (drag & drop): νέος εκπαιδευτής + νέα ώρα
+const moveLesson = async (req, res, next) => {
+  const { instructorId, startTime } = req.body
+
+  try {
+    const lesson = await prisma.lesson.findFirst({
+      where: { id: req.params.id, schoolId: req.user.id },
+      include: { bookings: true }
+    })
+
+    if (!lesson) {
+      return res.status(404).json({ error: 'Το μάθημα δεν βρέθηκε' })
+    }
+
+    const dateStr = new Date(lesson.date).toISOString().split('T')[0]
+
+    // Έλεγχος ωραρίου
+    assertWithinWorkingHours(startTime, lesson.duration)
+
+    // Έλεγχος ότι ο εκπαιδευτής ανήκει στη σχολή
+    await assertInstructorBelongsToSchool(prisma, instructorId, req.user.id)
+
+    // Έλεγχος ειδικότητας
+    const instructor = await prisma.instructor.findUnique({ where: { id: instructorId } })
+    if (!instructor.specialty.includes(lesson.sport)) {
+      const sportLabel = lesson.sport === 'ski' ? 'σκι' : 'snowboard'
+      return res.status(400).json({ error: `Ο εκπαιδευτής ${instructor.name} δεν διδάσκει ${sportLabel}` })
+    }
+
+    // Έλεγχος διαθεσιμότητας (overlap)
+    await assertInstructorAvailable(prisma, {
+      instructorId,
+      date: dateStr,
+      startTime,
+      duration: lesson.duration,
+      excludeLessonId: req.params.id
+    })
+
+    const updated = await prisma.lesson.update({
+      where: { id: req.params.id },
+      data: {
+        startTime,
+        instructorId,
+        status: lesson.status === 'cancelled'
+          ? 'cancelled'
+          : lesson.type === 'open_group'
+            ? (lesson.bookings.filter(b => b.status !== 'cancelled').length >= lesson.minPersons ? 'confirmed' : 'pending')
+            : 'confirmed',
+        bookings: {
+          updateMany: {
+            where: { lessonId: req.params.id, status: { not: 'cancelled' } },
+            data: { status: 'confirmed' }
+          }
+        }
+      },
+      include: {
+        instructor: { select: { id: true, name: true } },
+        bookings: true
+      }
+    })
+
+    res.json(updated)
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Κλείδωμα ανοιχτού ομαδικού: ορισμός ώρας + εκπαιδευτή (από σχολή)
+const lockOpenGroup = async (req, res, next) => {
+  const { startTime, instructorId } = req.body
+
+  try {
+    const lesson = await prisma.lesson.findFirst({
+      where: { id: req.params.id, schoolId: req.user.id },
+      include: { bookings: { where: { status: { not: 'cancelled' } } } }
+    })
+
+    if (!lesson) {
+      return res.status(404).json({ error: 'Το μάθημα δεν βρέθηκε' })
+    }
+
+    if (lesson.type !== 'open_group') {
+      return res.status(400).json({ error: 'Μόνο ανοιχτά ομαδικά μπορούν να κλειδωθούν' })
+    }
+
+    const dateStr = new Date(lesson.date).toISOString().split('T')[0]
+
+    // Validation
+    assertWithinWorkingHours(startTime, lesson.duration)
+    await assertInstructorBelongsToSchool(prisma, instructorId, req.user.id)
+
+    // Έλεγχος ειδικότητας
+    const instructor = await prisma.instructor.findUnique({ where: { id: instructorId } })
+    if (!instructor.specialty.includes(lesson.sport)) {
+      const sportLabel = lesson.sport === 'ski' ? 'σκι' : 'snowboard'
+      return res.status(400).json({ error: `Ο εκπαιδευτής ${instructor.name} δεν διδάσκει ${sportLabel}` })
+    }
+
+    // Έλεγχος διαθεσιμότητας
+    await assertInstructorAvailable(prisma, {
+      instructorId,
+      date: dateStr,
+      startTime,
+      duration: lesson.duration,
+      excludeLessonId: req.params.id
+    })
+
+    const activeBookings = lesson.bookings.length
+    const reachedMin = activeBookings >= lesson.minPersons
+
+    const updated = await prisma.lesson.update({
+      where: { id: req.params.id },
+      data: {
+        startTime,
+        instructorId,
+        status: reachedMin ? 'confirmed' : 'pending',
+        bookings: {
+          updateMany: {
+            where: { lessonId: req.params.id, status: { not: 'cancelled' } },
+            data: { status: reachedMin ? 'confirmed' : 'pending' }
+          }
+        }
+      },
+      include: {
+        instructor: { select: { id: true, name: true } },
+        bookings: true
+      }
+    })
+
+    res.json(updated)
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Αυτόματο κλείδωμα ώρας ομαδικού αν ≥ min άτομα προτιμούν κοινή ώρα
+const autoLockOpenGroupTime = async (lessonId) => {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { bookings: { where: { status: { not: 'cancelled' } } } }
+  })
+
+  if (!lesson || lesson.type !== 'open_group') return
+  if (lesson.startTime) return // έχει ήδη ώρα, δεν κάνουμε τίποτα
+
+  const activeBookings = lesson.bookings
+  if (activeBookings.length < lesson.minPersons) return // δεν έφτασε το min ακόμα
+
+  // Μέτρα πόσοι προτιμούν κάθε ώρα
+  const maxStart = 16 - lesson.duration
+  const hourVotes = {}
+  for (let h = 9; h <= maxStart; h++) hourVotes[h] = 0
+
+  activeBookings.forEach(b => {
+    (b.preferredHours || []).forEach(h => {
+      if (hourVotes[h] !== undefined) hourVotes[h]++
+    })
+  })
+
+  // Βρες ώρες με ≥ min ψήφους, διάλεξε τη νωρίτερη
+  const qualifyingHours = Object.keys(hourVotes)
+    .map(Number)
+    .filter(h => hourVotes[h] >= lesson.minPersons)
+    .sort((a, b) => a - b) // αύξουσα → νωρίτερη πρώτη
+
+  if (qualifyingHours.length === 0) return // καμία ώρα δεν συγκεντρώνει το min
+
+  const lockedHour = qualifyingHours[0]
+  const startTime = `${lockedHour.toString().padStart(2, '0')}:00`
+
+  // Κλείδωσε την ώρα (αλλά ΟΧΙ εκπαιδευτή — μένει pending μέχρι ανάθεση)
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: { startTime }
+  })
+}
+
+// Αφαίρεση εκπαιδευτή από μάθημα (grid → pending panel)
+const unassignInstructor = async (req, res, next) => {
+  try {
+    const lesson = await prisma.lesson.findFirst({
+      where: { id: req.params.id, schoolId: req.user.id }
+    })
+
+    if (!lesson) {
+      return res.status(404).json({ error: 'Το μάθημα δεν βρέθηκε' })
+    }
+
+    const updated = await prisma.lesson.update({
+      where: { id: req.params.id },
+      data: {
+        instructorId: null,
+        status: 'pending',
+        bookings: {
+          updateMany: {
+            where: { lessonId: req.params.id, status: { not: 'cancelled' } },
+            data: { status: 'pending' }
+          }
+        }
+      },
+      include: {
+        instructor: { select: { id: true, name: true } },
+        bookings: true
+      }
+    })
+
+    res.json(updated)
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   createLesson,
   getLessons,
@@ -311,5 +517,9 @@ module.exports = {
   cancelBooking,
   assignInstructor,
   createOpenGroupLesson,
-  syncLessonStatus
+  syncLessonStatus,
+  moveLesson,
+  lockOpenGroup,
+  autoLockOpenGroupTime,
+  unassignInstructor
 }
